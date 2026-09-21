@@ -1,0 +1,538 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Modern Veresiye Defteri</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; }
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; height: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #f1f1f1; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+    </style>
+</head>
+<body class="bg-slate-100 text-slate-800 min-h-screen flex flex-col selection:bg-indigo-500 selection:text-white">
+
+    <header class="bg-indigo-600 text-white shadow-md sticky top-0 z-40">
+        <div class="max-w-7xl mx-auto px-4 py-3.5 flex flex-col sm:flex-row justify-between items-center gap-3">
+            <div class="flex items-center space-x-3 w-full sm:w-auto justify-between sm:justify-start">
+                <div class="flex items-center space-x-3">
+                    <div class="bg-white/10 p-2 rounded-xl backdrop-blur-sm">
+                        <i class="fa-solid fa-book-open text-xl text-amber-300"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-base sm:text-lg font-bold tracking-tight">Veresiye Defteri</h1>
+                        <p class="text-[11px] text-indigo-200">Mobil Uyumlu Hesap Takibi</p>
+                    </div>
+                </div>
+                <!-- Mobile quick actions button -->
+                <div class="flex items-center gap-2 sm:hidden">
+                    <button onclick="openModal('customerModal')" class="bg-amber-400 text-slate-900 p-2.5 rounded-xl text-sm shadow">
+                        <i class="fa-solid fa-user-plus"></i>
+                    </button>
+                    <button onclick="toggleMenu()" class="bg-indigo-700 text-white p-2.5 rounded-xl text-sm">
+                        <i class="fa-solid fa-ellipsis-vertical"></i>
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Desktop & Expanded Actions -->
+            <div id="headerActions" class="hidden sm:flex items-center gap-2 w-full sm:w-auto justify-end flex-wrap">
+                <button onclick="openModal('customerModal')" class="bg-amber-400 hover:bg-amber-500 text-slate-900 font-semibold px-3.5 py-2 rounded-xl text-xs sm:text-sm shadow transition flex items-center gap-2">
+                    <i class="fa-solid fa-user-plus"></i> Müşteri Ekle
+                </button>
+                <button onclick="clearZeroDebtors()" title="Borcu Olmayanları Sil" class="bg-indigo-700 hover:bg-indigo-800 text-white font-medium px-3.5 py-2 rounded-xl text-xs sm:text-sm transition flex items-center gap-1.5">
+                    <i class="fa-solid fa-user-slash"></i> Borcu Olmayanları Sil
+                </button>
+                <button onclick="exportData()" title="Yedekle" class="bg-indigo-700 hover:bg-indigo-800 text-white p-2 rounded-xl text-sm transition">
+                    <i class="fa-solid fa-download"></i>
+                </button>
+                <label title="Yükle" class="bg-indigo-700 hover:bg-indigo-800 text-white p-2 rounded-xl text-sm transition cursor-pointer">
+                    <i class="fa-solid fa-upload"></i>
+                    <input type="file" id="importFile" class="hidden" accept=".json" onchange="importData(event)">
+                </label>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-4 py-4 sm:py-8 flex-grow w-full space-y-4 sm:space-y-6">
+        <div class="grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-6">
+            <div class="bg-white p-4 sm:p-6 rounded-2xl shadow-sm border border-slate-200 flex items-center justify-between col-span-2 lg:col-span-1">
+                <div>
+                    <p class="text-[11px] sm:text-xs font-semibold uppercase tracking-wider text-slate-400">Toplam Alacak</p>
+                    <h3 id="totalReceivable" class="text-xl sm:text-2xl font-bold text-rose-600 mt-1">₺0.00</h3>
+                </div>
+                <div class="w-10 h-10 sm:w-12 sm:h-12 bg-rose-50 text-rose-600 rounded-xl flex items-center justify-center text-lg sm:text-xl">
+                    <i class="fa-solid fa-wallet"></i>
+                </div>
+            </div>
+            <div class="bg-white p-4 sm:p-6 rounded-2xl shadow-sm border border-slate-200 flex items-center justify-between">
+                <div>
+                    <p class="text-[11px] sm:text-xs font-semibold uppercase tracking-wider text-slate-400">Müşteri</p>
+                    <h3 id="totalCustomers" class="text-xl sm:text-2xl font-bold text-indigo-600 mt-1">0</h3>
+                </div>
+                <div class="w-10 h-10 sm:w-12 sm:h-12 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center text-lg sm:text-xl">
+                    <i class="fa-solid fa-users"></i>
+                </div>
+            </div>
+            <div class="bg-white p-4 sm:p-6 rounded-2xl shadow-sm border border-slate-200 flex items-center justify-between">
+                <div>
+                    <p class="text-[11px] sm:text-xs font-semibold uppercase tracking-wider text-slate-400">Borçlu</p>
+                    <h3 id="debtorCustomers" class="text-xl sm:text-2xl font-bold text-amber-600 mt-1">0</h3>
+                </div>
+                <div class="w-10 h-10 sm:w-12 sm:h-12 bg-amber-50 text-amber-600 rounded-xl flex items-center justify-center text-lg sm:text-xl">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-4 space-y-3">
+            <div class="relative w-full">
+                <i class="fa-solid fa-search absolute left-3.5 top-3.5 text-slate-400 text-sm"></i>
+                <input type="text" id="searchInput" oninput="renderApp()" placeholder="Müşteri adı veya telefon ara..." class="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition">
+            </div>
+            <div class="flex items-center gap-2 overflow-x-auto pb-1 text-xs sm:text-sm">
+                <button onclick="setFilter('all')" id="filter-all" class="filter-btn px-3.5 py-2 rounded-xl font-medium bg-indigo-50 text-indigo-700 transition whitespace-nowrap">Tümü</button>
+                <button onclick="setFilter('debtors')" id="filter-debtors" class="filter-btn px-3.5 py-2 rounded-xl font-medium bg-slate-100 text-slate-600 hover:bg-slate-200 transition whitespace-nowrap">Borçlular</button>
+                <button onclick="setFilter('clear')" id="filter-clear" class="filter-btn px-3.5 py-2 rounded-xl font-medium bg-slate-100 text-slate-600 hover:bg-slate-200 transition whitespace-nowrap">Borcu Olmayanlar</button>
+            </div>
+        </div>
+
+        <div id="customerGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <!-- Müşteri kartları -->
+        </div>
+
+        <!-- Empty state -->
+        <div id="emptyState" class="hidden flex flex-col items-center justify-center py-16 text-center">
+            <div class="w-16 h-16 bg-slate-200 text-slate-400 rounded-full flex items-center justify-center text-2xl mb-3">
+                <i class="fa-solid fa-address-book"></i>
+            </div>
+            <h3 class="text-base font-semibold text-slate-700">Kayıt Bulunamadı</h3>
+            <p class="text-xs text-slate-500 max-w-xs mt-1">Arama kriterinize uygun müşteri yok ya da henüz kayıt eklemediniz.</p>
+            <button onclick="openModal('customerModal')" class="mt-3 bg-indigo-600 text-white px-4 py-2 rounded-xl text-xs font-medium hover:bg-indigo-700 transition">Müşteri Ekle</button>
+        </div>
+    </main>
+
+    <div id="customerModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-end sm:items-center justify-center sm:p-4 hidden">
+        <div class="bg-white rounded-t-3xl sm:rounded-2xl shadow-xl w-full max-w-md p-6 transform transition-all max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-base font-bold text-slate-800">Yeni Müşteri Ekle</h3>
+                <button onclick="closeModal('customerModal')" class="text-slate-400 hover:text-slate-600 p-2"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+            <form id="customerForm" onsubmit="addCustomer(event)" class="space-y-4">
+                <div>
+                    <label class="block text-[11px] font-semibold uppercase text-slate-500 mb-1">Müşteri Adı Soyadı</label>
+                    <input type="text" id="custName" required placeholder="Örn: Ahmet Yılmaz" class="w-full px-4 py-3 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                </div>
+                <div>
+                    <label class="block text-[11px] font-semibold uppercase text-slate-500 mb-1">Telefon Numarası</label>
+                    <input type="tel" id="custPhone" placeholder="0555 444 33 22" class="w-full px-4 py-3 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                </div>
+                <div>
+                    <label class="block text-[11px] font-semibold uppercase text-slate-500 mb-1">Notlar / Adres</label>
+                    <textarea id="custNote" rows="2" placeholder="Ek bilgiler..." class="w-full px-4 py-3 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"></textarea>
+                </div>
+                <div class="flex gap-3 pt-2">
+                    <button type="button" onclick="closeModal('customerModal')" class="w-1/2 py-3 rounded-xl text-sm font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 transition">İptal</button>
+                    <button type="submit" class="w-1/2 py-3 rounded-xl text-sm font-medium bg-indigo-600 hover:bg-indigo-700 text-white transition shadow-sm">Kaydet</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="transactionModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-end sm:items-center justify-center sm:p-4 hidden">
+        <div class="bg-white rounded-t-3xl sm:rounded-2xl shadow-xl w-full max-w-md p-6 transform transition-all max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center mb-4">
+                <h3 id="transactionModalTitle" class="text-base font-bold text-slate-800">İşlem Ekle</h3>
+                <button onclick="closeModal('transactionModal')" class="text-slate-400 hover:text-slate-600 p-2"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+            <form id="transactionForm" onsubmit="addTransaction(event)" class="space-y-4">
+                <input type="hidden" id="transCustomerId">
+                <input type="hidden" id="transType">
+                <div>
+                    <label class="block text-[11px] font-semibold uppercase text-slate-500 mb-1">Tutar (₺)</label>
+                    <div class="relative">
+                        <span class="absolute left-4 top-3 text-slate-400 font-bold">₺</span>
+                        <input type="number" step="0.01" min="0.01" id="transAmount" required placeholder="0.00" class="w-full pl-9 pr-4 py-3 border border-slate-200 rounded-xl text-base focus:outline-none focus:ring-2 focus:ring-indigo-500 font-bold">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-[11px] font-semibold uppercase text-slate-500 mb-1">Açıklama / Ürün</label>
+                    <input type="text" id="transDesc" required placeholder="Örn: Alışveriş veya Ödeme" class="w-full px-4 py-3 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                </div>
+                <div>
+                    <label class="block text-[11px] font-semibold uppercase text-slate-500 mb-1">Tarih</label>
+                    <input type="date" id="transDate" required class="w-full px-4 py-3 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                </div>
+                <div class="flex gap-3 pt-2">
+                    <button type="button" onclick="closeModal('transactionModal')" class="w-1/2 py-3 rounded-xl text-sm font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 transition">İptal</button>
+                    <button type="submit" id="transSubmitBtn" class="w-1/2 py-3 rounded-xl text-sm font-medium bg-indigo-600 hover:bg-indigo-700 text-white transition shadow-sm">İşlemi Kaydet</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="detailModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-end sm:items-center justify-center sm:p-4 hidden">
+        <div class="bg-white rounded-t-3xl sm:rounded-2xl shadow-xl w-full max-w-xl max-h-[92vh] flex flex-col transform transition-all">
+            <div class="p-4 sm:p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50 rounded-t-3xl sm:rounded-t-2xl">
+                <div>
+                    <h3 id="detailCustomerName" class="text-base sm:text-lg font-bold text-slate-800">Müşteri</h3>
+                    <p id="detailCustomerMeta" class="text-xs text-slate-500 mt-0.5">-</p>
+                </div>
+                <button onclick="closeModal('detailModal')" class="text-slate-400 hover:text-slate-600 p-2"><i class="fa-solid fa-xmark text-xl"></i></button>
+            </div>
+            <div class="p-4 sm:p-6 overflow-y-auto custom-scrollbar flex-grow space-y-4">
+                <div class="bg-slate-100/80 p-4 rounded-xl border border-slate-200 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                    <div>
+                        <span class="text-[11px] font-semibold text-slate-500 uppercase tracking-wide">Güncel Bakiye</span>
+                        <h4 id="detailCustomerBalance" class="text-xl sm:text-2xl font-bold text-rose-600 mt-0.5">₺0.00</h4>
+                    </div>
+                    <div class="flex gap-2 w-full sm:w-auto">
+                        <button onclick="openTransactionModalFromDetail('debt')" class="flex-1 sm:flex-none bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold px-3 py-2.5 rounded-xl shadow-sm transition flex items-center justify-center gap-1.5">
+                            <i class="fa-solid fa-plus"></i> Borç Ekle
+                        </button>
+                        <button onclick="openTransactionModalFromDetail('payment')" class="flex-1 sm:flex-none bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold px-3 py-2.5 rounded-xl shadow-sm transition flex items-center justify-center gap-1.5">
+                            <i class="fa-solid fa-minus"></i> Tahsil Al
+                        </button>
+                    </div>
+                </div>
+
+                <div>
+                    <div class="flex justify-between items-center mb-2">
+                        <h4 class="text-xs font-bold uppercase tracking-wider text-slate-500">İşlem Geçmişi</h4>
+                        <span id="detailTransactionCount" class="text-xs text-slate-400">0 işlem</span>
+                    </div>
+                    <div id="detailTransactionList" class="space-y-2">
+                        <!-- İşlem öğeleri -->
+                    </div>
+                </div>
+            </div>
+            <div class="p-4 border-t border-slate-100 bg-slate-50 flex justify-between items-center rounded-b-3xl sm:rounded-b-2xl">
+                <button onclick="deleteCurrentCustomer()" class="text-rose-600 hover:text-rose-700 text-xs font-medium flex items-center gap-1.5 px-3 py-2 rounded-lg hover:bg-rose-50 transition">
+                    <i class="fa-solid fa-trash"></i> Müşteriyi Sil
+                </button>
+                <button onclick="closeModal('detailModal')" class="bg-slate-200 hover:bg-slate-300 text-slate-700 px-4 py-2 rounded-xl text-xs font-medium transition">Kapat</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="messageModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white rounded-2xl shadow-xl max-w-xs w-full p-6 text-center transform transition-all">
+            <div id="msgIcon" class="w-12 h-12 rounded-full flex items-center justify-center text-xl mx-auto mb-3"></div>
+            <h3 id="msgTitle" class="text-base font-bold text-slate-800 mb-1">Bildirim</h3>
+            <p id="msgText" class="text-xs text-slate-600 mb-5"></p>
+            <button onclick="closeModal('messageModal')" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-2.5 rounded-xl text-xs font-medium transition">Tamam</button>
+        </div>
+    </div>
+
+    <script>
+        let state = {
+            customers: JSON.parse(localStorage.getItem('veresiye_customers')) || [
+                { id: 1, name: "Ahmet Yılmaz", phone: "0532 123 45 67", note: "Esnaf", transactions: [
+                    { id: 101, type: 'debt', amount: 500, desc: "Mal Alımı", date: "2026-06-01" },
+                    { id: 102, type: 'payment', amount: 200, desc: "Nakit Ödeme", date: "2026-06-05" }
+                ]},
+                { id: 2, name: "Fatma Kaya", phone: "0543 987 65 43", note: "Komşu", transactions: [
+                    { id: 201, type: 'debt', amount: 0, desc: "Hesap Kapatıldı", date: "2026-06-02" }
+                ]}
+            ],
+            filter: 'all',
+            currentCustomerId: null
+        };
+
+        function saveToStorage() {
+            localStorage.setItem('veresiye_customers', JSON.stringify(state.customers));
+        }
+
+        function showMessage(title, text, type = 'success') {
+            const icon = document.getElementById('msgIcon');
+            if (type === 'success') {
+                icon.className = "w-12 h-12 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center text-lg mx-auto mb-3";
+                icon.innerHTML = '<i class="fa-solid fa-check"></i>';
+            } else {
+                icon.className = "w-12 h-12 rounded-full bg-rose-50 text-rose-600 flex items-center justify-center text-lg mx-auto mb-3";
+                icon.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i>';
+            }
+            document.getElementById('msgTitle').innerText = title;
+            document.getElementById('msgText').innerText = text;
+            openModal('messageModal');
+        }
+
+        function openModal(id) { document.getElementById(id).classList.remove('hidden'); }
+        function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
+
+        function toggleMenu() {
+            const actions = document.getElementById('headerActions');
+            actions.classList.toggle('hidden');
+            actions.classList.toggle('flex');
+            actions.classList.toggle('flex-col');
+            actions.classList.toggle('absolute');
+            actions.classList.toggle('top-full');
+            actions.classList.toggle('left-0');
+            actions.classList.toggle('right-0');
+            actions.classList.toggle('bg-indigo-700');
+            actions.classList.toggle('p-4');
+            actions.classList.toggle('shadow-lg');
+        }
+
+        function setFilter(type) {
+            state.filter = type;
+            document.querySelectorAll('.filter-btn').forEach(btn => {
+                btn.className = "filter-btn px-3.5 py-2 rounded-xl font-medium bg-slate-100 text-slate-600 hover:bg-slate-200 transition whitespace-nowrap";
+            });
+            document.getElementById(`filter-${type}`).className = "filter-btn px-3.5 py-2 rounded-xl font-medium bg-indigo-50 text-indigo-700 transition whitespace-nowrap";
+            renderApp();
+        }
+
+        function addCustomer(e) {
+            e.preventDefault();
+            const name = document.getElementById('custName').value.trim();
+            const phone = document.getElementById('custPhone').value.trim();
+            const note = document.getElementById('custNote').value.trim();
+            if (!name) return;
+
+            state.customers.unshift({
+                id: Date.now(),
+                name,
+                phone: phone || 'Belirtilmemiş',
+                note,
+                transactions: []
+            });
+            saveToStorage();
+            closeModal('customerModal');
+            document.getElementById('customerForm').reset();
+            renderApp();
+            showMessage('Başarılı', 'Müşteri başarıyla eklendi.');
+        }
+
+        function openTransactionModal(customerId, type) {
+            state.currentCustomerId = customerId;
+            document.getElementById('transCustomerId').value = customerId;
+            document.getElementById('transType').value = type;
+            document.getElementById('transDate').valueAsDate = new Date();
+            document.getElementById('transAmount').value = '';
+            document.getElementById('transDesc').value = '';
+
+            const title = document.getElementById('transactionModalTitle');
+            const btn = document.getElementById('transSubmitBtn');
+            if (type === 'debt') {
+                title.innerText = "Borç Ekle";
+                btn.className = "w-1/2 py-3 rounded-xl text-sm font-medium bg-rose-600 hover:bg-rose-700 text-white transition shadow-sm";
+            } else {
+                title.innerText = "Ödeme Al (Tahsilat)";
+                btn.className = "w-1/2 py-3 rounded-xl text-sm font-medium bg-emerald-600 hover:bg-emerald-700 text-white transition shadow-sm";
+            }
+            openModal('transactionModal');
+        }
+
+        function openTransactionModalFromDetail(type) {
+            closeModal('detailModal');
+            openTransactionModal(state.currentCustomerId, type);
+        }
+
+        function addTransaction(e) {
+            e.preventDefault();
+            const customerId = Number(document.getElementById('transCustomerId').value);
+            const type = document.getElementById('transType').value;
+            const amount = parseFloat(document.getElementById('transAmount').value);
+            const desc = document.getElementById('transDesc').value.trim();
+            const date = document.getElementById('transDate').value;
+
+            if (isNaN(amount) || amount <= 0) return;
+
+            const customer = state.customers.find(c => c.id === customerId);
+            if (customer) {
+                customer.transactions.push({ id: Date.now(), type, amount, desc, date });
+                saveToStorage();
+                closeModal('transactionModal');
+                renderApp();
+                openCustomerDetail(customerId);
+                showMessage('İşlem Kaydedildi', `${amount.toFixed(2)} ₺ ${type === 'debt' ? 'borç eklendi' : 'tahsil edildi'}.`);
+            }
+        }
+
+        function openCustomerDetail(customerId) {
+            state.currentCustomerId = customerId;
+            const customer = state.customers.find(c => c.id === customerId);
+            if (!customer) return;
+
+            document.getElementById('detailCustomerName').innerText = customer.name;
+            document.getElementById('detailCustomerMeta').innerHTML = `<i class="fa-solid fa-phone mr-1"></i> ${customer.phone} ${customer.note ? '• ' + customer.note : ''}`;
+
+            let balance = customer.transactions.reduce((acc, t) => t.type === 'debt' ? acc + t.amount : acc - t.amount, 0);
+            const balanceEl = document.getElementById('detailCustomerBalance');
+            balanceEl.innerText = `${balance.toFixed(2)} ₺`;
+            balanceEl.className = balance > 0 ? "text-xl sm:text-2xl font-bold text-rose-600 mt-0.5" : (balance < 0 ? "text-xl sm:text-2xl font-bold text-emerald-600 mt-0.5" : "text-xl sm:text-2xl font-bold text-slate-700 mt-0.5");
+
+            const listEl = document.getElementById('detailTransactionList');
+            document.getElementById('detailTransactionCount').innerText = `${customer.transactions.length} işlem`;
+
+            if (customer.transactions.length === 0) {
+                listEl.innerHTML = `<p class="text-center text-xs text-slate-400 py-6">İşlem geçmişi bulunmuyor.</p>`;
+            } else {
+                listEl.innerHTML = customer.transactions.slice().reverse().map(t => `
+                    <div class="flex justify-between items-center p-3 bg-slate-50 border border-slate-100 rounded-xl">
+                        <div class="flex items-center gap-2.5">
+                            <div class="w-8 h-8 rounded-lg flex items-center justify-center text-xs ${t.type === 'debt' ? 'bg-rose-100 text-rose-600' : 'bg-emerald-100 text-emerald-600'}">
+                                <i class="fa-solid ${t.type === 'debt' ? 'fa-arrow-trend-up' : 'fa-arrow-trend-down'}"></i>
+                            </div>
+                            <div>
+                                <p class="text-xs font-semibold text-slate-800">${t.desc}</p>
+                                <p class="text-[10px] text-slate-400">${t.date}</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <span class="text-xs font-bold ${t.type === 'debt' ? 'text-rose-600' : 'text-emerald-600'}">
+                                ${t.type === 'debt' ? '+' : '-'}${t.amount.toFixed(2)} ₺
+                            </span>
+                            <button onclick="deleteTransaction(${customer.id}, ${t.id})" class="text-slate-300 hover:text-rose-600 p-1 text-xs"><i class="fa-solid fa-trash"></i></button>
+                        </div>
+                    </div>
+                `).join('');
+            }
+            openModal('detailModal');
+        }
+
+        function deleteTransaction(customerId, transId) {
+            const customer = state.customers.find(c => c.id === customerId);
+            if (customer) {
+                customer.transactions = customer.transactions.filter(t => t.id !== transId);
+                saveToStorage();
+                renderApp();
+                openCustomerDetail(customerId);
+            }
+        }
+
+        function deleteCurrentCustomer() {
+            if (confirm("Bu müşteriyi silmek istediğinize emin misiniz?")) {
+                state.customers = state.customers.filter(c => c.id !== state.currentCustomerId);
+                saveToStorage();
+                closeModal('detailModal');
+                renderApp();
+                showMessage('Silindi', 'Müşteri kaldırıldı.', 'error');
+            }
+        }
+
+        // Borcu Olmayan / Bakiyesi Sıfır Olanları Temizle
+        function clearZeroDebtors() {
+            const beforeCount = state.customers.length;
+            state.customers = state.customers.filter(c => {
+                let balance = c.transactions.reduce((acc, t) => t.type === 'debt' ? acc + t.amount : acc - t.amount, 0);
+                return balance > 0;
+            });
+            const removedCount = beforeCount - state.customers.length;
+            saveToStorage();
+            renderApp();
+            showMessage('Temizlendi', `${removedCount} adet borcu olmayan/sıfırlanan müşteri listeden kaldırıldı.`, 'success');
+        }
+
+        function exportData() {
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(state.customers, null, 2));
+            const dl = document.createElement('a');
+            dl.setAttribute("href", dataStr);
+            dl.setAttribute("download", `veresiye_yedek_${new Date().toISOString().slice(0,10)}.json`);
+            document.body.appendChild(dl);
+            dl.click();
+            dl.remove();
+        }
+
+        function importData(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(evt) {
+                try {
+                    const parsed = JSON.parse(evt.target.result);
+                    if (Array.isArray(parsed)) {
+                        state.customers = parsed;
+                        saveToStorage();
+                        renderApp();
+                        showMessage('Başarılı', 'Yedek yüklendi.');
+                    }
+                } catch(err) {
+                    showMessage('Hata', 'Geçersiz dosya!', 'error');
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        function renderApp() {
+            const search = document.getElementById('searchInput').value.toLowerCase();
+            const grid = document.getElementById('customerGrid');
+            const emptyState = document.getElementById('emptyState');
+
+            let totalRec = 0;
+            let debtorCount = 0;
+
+            let filtered = state.customers.filter(c => {
+                let balance = c.transactions.reduce((acc, t) => t.type === 'debt' ? acc + t.amount : acc - t.amount, 0);
+                if (balance > 0) debtorCount++;
+                totalRec += balance > 0 ? balance : 0;
+
+                const match = c.name.toLowerCase().includes(search) || c.phone.toLowerCase().includes(search);
+                if (!match) return false;
+
+                if (state.filter === 'debtors') return balance > 0;
+                if (state.filter === 'clear') return balance <= 0;
+                return true;
+            });
+
+            document.getElementById('totalReceivable').innerText = `${totalRec.toFixed(2)} ₺`;
+            document.getElementById('totalCustomers').innerText = state.customers.length;
+            document.getElementById('debtorCustomers').innerText = debtorCount;
+
+            if (filtered.length === 0) {
+                grid.innerHTML = '';
+                emptyState.classList.remove('hidden');
+                return;
+            }
+
+            emptyState.classList.add('hidden');
+            grid.innerHTML = filtered.map(c => {
+                let balance = c.transactions.reduce((acc, t) => t.type === 'debt' ? acc + t.amount : acc - t.amount, 0);
+                let last = c.transactions.length > 0 ? c.transactions[c.transactions.length - 1] : null;
+
+                return `
+                    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-4 sm:p-5 flex flex-col justify-between hover:shadow transition">
+                        <div>
+                            <div class="flex justify-between items-start mb-2">
+                                <div>
+                                    <h3 onclick="openCustomerDetail(${c.id})" class="text-sm sm:text-base font-bold text-slate-800 hover:text-indigo-600 cursor-pointer">${c.name}</h3>
+                                    <p class="text-[11px] text-slate-400 mt-0.5"><i class="fa-solid fa-phone mr-1"></i>${c.phone}</p>
+                                </div>
+                                <span class="px-2.5 py-0.5 rounded-full text-[10px] font-semibold ${balance > 0 ? 'bg-rose-50 text-rose-600' : 'bg-emerald-50 text-emerald-600'}">
+                                    ${balance > 0 ? 'Borçlu' : 'Borcu Yok'}
+                                </span>
+                            </div>
+                            
+                            <div class="bg-slate-50 p-3.5 rounded-xl border border-slate-100 my-3 flex justify-between items-center">
+                                <span class="text-[11px] font-medium text-slate-500 uppercase">Kalan Bakiye</span>
+                                <span class="text-base sm:text-lg font-extrabold ${balance > 0 ? 'text-rose-600' : 'text-slate-700'}">${balance.toFixed(2)} ₺</span>
+                            </div>
+
+                            ${last ? `<p class="text-[11px] text-slate-400 mb-3 truncate"><span class="font-medium text-slate-600">Son:</span> ${last.desc} (${last.date})</p>` : '<p class="text-[11px] text-slate-400 mb-3 italic">İşlem yok</p>'}
+                        </div>
+
+                        <div class="grid grid-cols-3 gap-1.5 pt-2 border-t border-slate-100">
+                            <button onclick="openCustomerDetail(${c.id})" class="bg-slate-100 hover:bg-slate-200 text-slate-700 text-[11px] font-semibold py-2 rounded-xl transition flex items-center justify-center gap-1">
+                                <i class="fa-solid fa-file-lines"></i> Detay
+                            </button>
+                            <button onclick="openTransactionModal(${c.id}, 'debt')" class="bg-rose-50 hover:bg-rose-100 text-rose-600 text-[11px] font-semibold py-2 rounded-xl transition flex items-center justify-center gap-1">
+                                <i class="fa-solid fa-plus"></i> Borç
+                            </button>
+                            <button onclick="openTransactionModal(${c.id}, 'payment')" class="bg-emerald-50 hover:bg-emerald-100 text-emerald-600 text-[11px] font-semibold py-2 rounded-xl transition flex items-center justify-center gap-1">
+                                <i class="fa-solid fa-minus"></i> Tahsil
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        window.onload = renderApp;
+    </script>
+</body>
+</html>
